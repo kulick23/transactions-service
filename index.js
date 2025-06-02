@@ -1,24 +1,19 @@
-const amqp = require('amqplib');
+const express = require("express");
+const app = express();
+app.use(express.json());
 
-async function startConsumer() {
-  const conn = await amqp.connect(process.env.RABBIT_URL || 'amqp://rabbitmq');
-  const ch = await conn.createChannel();
-  await ch.assertQueue('donation-events');
-  await ch.assertQueue('logs');
+let transactions = [];
 
-  ch.consume('donation-events', msg => {
-    const data = JSON.parse(msg.content.toString());
-    console.log('Received donation event:', data);
+app.post("/transactions", (req, res) => {
+  const tx = { id: Date.now().toString(), ...req.body };
+  transactions.push(tx);
+  res.status(201).json({ status: "Transaction saved", tx });
+});
 
-    const log = {
-      type: 'donation',
-      timestamp: new Date(),
-      data
-    };
+app.get("/transactions", (_, res) => res.json(transactions));
+app.get("/ping", (_, res) => res.send("pong"));
+app.get("/health", (_, res) => res.json({ status: "ok" }));
+app.get("/metrics", (_, res) => res.json({ transactions: transactions.length }));
 
-    ch.sendToQueue('logs', Buffer.from(JSON.stringify(log)));
-    ch.ack(msg);
-  });
-}
-
-startConsumer().then(() => console.log('Transactions service started'));
+const PORT = process.env.PORT || 3004;
+app.listen(PORT, () => console.log(`Transaction service running on ${PORT}`));
