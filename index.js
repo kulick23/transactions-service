@@ -66,7 +66,9 @@ app.get("/transactions", async (_, res) => {
 });
 app.get("/ping", (_, res) => res.send("pong"));
 app.get("/health", (_, res) => res.json({ status: "ok" }));
-app.get("/metrics", (_, res) => res.json({ transactions: transactions.length }));
-
+app.get("/metrics", async (_, res) => {
+  const count = await db.collection('transactions').countDocuments();
+  res.json({ transactions: count });
+});
 const PORT = process.env.PORT || 3004;
 app.listen(PORT, () => console.log(`Transaction service running on ${PORT}`));
